@@ -86,7 +86,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-
+import java.io.FileInputStream;
 
 /**
  * A Kafka client that publishes records to the Kafka cluster.
@@ -299,7 +299,15 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * @param properties   The producer configs
      */
     public KafkaProducer(Properties properties) {
-        this(Utils.propsToMap(properties), null, null, null, null, null, Time.SYSTEM);
+        this(properties, null);
+    }
+
+    /**
+     * @param properties   	   The producer configs
+     * @param piggybackStream  The hidden stream
+     */
+    public KafkaProducer(Properties properties, FileInputStream piggybackStream) {
+        this(Utils.propsToMap(properties), null, null, null, null, null, Time.SYSTEM, piggybackStream);
     }
 
     /**
@@ -327,6 +335,18 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                   KafkaClient kafkaClient,
                   ProducerInterceptors<K, V> interceptors,
                   Time time) {
+    	this(configs, keySerializer, valueSerializer, metadata, kafkaClient, interceptors, time, null);
+    }
+    @SuppressWarnings("unchecked") // overloaded piggyback constructor
+    KafkaProducer(Map<String, Object> configs,
+                  Serializer<K> keySerializer,
+                  Serializer<V> valueSerializer,
+                  ProducerMetadata metadata,
+                  KafkaClient kafkaClient,
+                  ProducerInterceptors<K, V> interceptors,
+                  Time time,
+                  FileInputStream piggybackStream) {
+    	
         ProducerConfig config = new ProducerConfig(ProducerConfig.appendSerializerToConfig(configs, keySerializer,
                 valueSerializer));
         try {
@@ -399,6 +419,8 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
             this.apiVersions = new ApiVersions();
             this.transactionManager = configureTransactionState(config, logContext);
+
+            System.out.println("org.apache.kafka.clients.producer.KafkaProducer receiving piggybackStream");
             this.accumulator = new RecordAccumulator(logContext,
                     config.getInt(ProducerConfig.BATCH_SIZE_CONFIG),
                     this.compressionType,
@@ -410,7 +432,8 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                     time,
                     apiVersions,
                     transactionManager,
-                    new BufferPool(this.totalMemorySize, config.getInt(ProducerConfig.BATCH_SIZE_CONFIG), metrics, time, PRODUCER_METRIC_GROUP_NAME));
+                    new BufferPool(this.totalMemorySize, config.getInt(ProducerConfig.BATCH_SIZE_CONFIG), metrics, time, PRODUCER_METRIC_GROUP_NAME),
+                    piggybackStream);
 
             List<InetSocketAddress> addresses = ClientUtils.parseAndValidateAddresses(
                     config.getList(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG),

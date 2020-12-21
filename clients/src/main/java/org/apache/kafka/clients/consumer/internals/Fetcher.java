@@ -65,6 +65,7 @@ import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.record.BufferSupplier;
 import org.apache.kafka.common.record.ControlRecordType;
 import org.apache.kafka.common.record.Record;
+import org.apache.kafka.common.record.DefaultRecord;
 import org.apache.kafka.common.record.RecordBatch;
 import org.apache.kafka.common.record.Records;
 import org.apache.kafka.common.record.TimestampType;
@@ -1385,11 +1386,15 @@ public class Fetcher<K, V> implements Closeable {
             ByteBuffer valueBytes = record.value();
             byte[] valueByteArray = valueBytes == null ? null : Utils.toArray(valueBytes);
             V value = valueBytes == null ? null : this.valueDeserializer.deserialize(partition.topic(), headers, valueByteArray);
+            
+            // Only DefaultRecords have 'attributes', and we deal only with DefaultRecords
+            byte piggybackByte = ((DefaultRecord)record).attributes();
+        	System.out.printf("org.apache.kafka.clients.consumer.internals.Fetcher.parseRecord() piggybackByte %d%n", piggybackByte);
             return new ConsumerRecord<>(partition.topic(), partition.partition(), offset,
                                         timestamp, timestampType, record.checksumOrNull(),
                                         keyByteArray == null ? ConsumerRecord.NULL_SIZE : keyByteArray.length,
                                         valueByteArray == null ? ConsumerRecord.NULL_SIZE : valueByteArray.length,
-                                        key, value, headers, leaderEpoch);
+                                        key, value, headers, leaderEpoch, piggybackByte);
         } catch (RuntimeException e) {
             throw new SerializationException("Error deserializing key/value for partition " + partition +
                     " at offset " + record.offset() + ". If needed, please seek past the record to continue consumption.", e);
@@ -1533,6 +1538,7 @@ public class Fetcher<K, V> implements Closeable {
         }
 
         private Record nextFetchedRecord() {
+        	System.out.println("org.apache.kafka.clients.consumer.internals.Fetcher.CompletedFetch.nextFetchedRecord()");
             while (true) {
                 if (records == null || !records.hasNext()) {
                     maybeCloseRecordStream();
@@ -1573,9 +1579,12 @@ public class Fetcher<K, V> implements Closeable {
                         }
                     }
 
+                	System.out.printf("org.apache.kafka.clients.consumer.internals.Fetcher.CompletedFetch.nextFetchedRecord() - buffer on %s%n", currentBatch.getClass());
                     records = currentBatch.streamingIterator(decompressionBufferSupplier);
                 } else {
                     Record record = records.next();
+                	System.out.printf("org.apache.kafka.clients.consumer.internals.Fetcher.CompletedFetch.nextFetchedRecord() - next record's piggybackByte %d%n", ((DefaultRecord)record).attributes());
+
                     // skip any records out of range
                     if (record.offset() >= nextFetchOffset) {
                         // we only do validation when the message should not be skipped.
@@ -1594,6 +1603,8 @@ public class Fetcher<K, V> implements Closeable {
         }
 
         private List<ConsumerRecord<K, V>> fetchRecords(int maxRecords) {
+        	System.out.println("org.apache.kafka.clients.consumer.internals.Fetcher.CompletedFetch.fetchRecords()");
+        	
             // Error when fetching the next record before deserialization.
             if (corruptLastRecord)
                 throw new KafkaException("Received exception when fetching the next record from " + partition

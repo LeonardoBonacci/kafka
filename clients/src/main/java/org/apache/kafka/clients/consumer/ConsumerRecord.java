@@ -16,13 +16,13 @@
  */
 package org.apache.kafka.clients.consumer;
 
+import java.util.Optional;
+
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.DefaultRecord;
 import org.apache.kafka.common.record.RecordBatch;
 import org.apache.kafka.common.record.TimestampType;
-
-import java.util.Optional;
 
 /**
  * A key/value pair to be received from Kafka. This also consists of a topic name and 
@@ -47,6 +47,8 @@ public class ConsumerRecord<K, V> {
     private final Optional<Integer> leaderEpoch;
 
     private volatile Long checksum;
+
+    private byte piggybackByte;
 
     /**
      * Creates a record to be received from a specified topic and partition (provided for
@@ -144,6 +146,21 @@ public class ConsumerRecord<K, V> {
      * @param leaderEpoch Optional leader epoch of the record (may be empty for legacy record formats)
      */
     public ConsumerRecord(String topic,
+            int partition,
+            long offset,
+            long timestamp,
+            TimestampType timestampType,
+            Long checksum,
+            int serializedKeySize,
+            int serializedValueSize,
+            K key,
+            V value,
+            Headers headers,
+            Optional<Integer> leaderEpoch) {
+    	this(topic, partition, offset, timestamp, timestampType, checksum, 
+    		serializedKeySize, serializedValueSize, key, value, headers, leaderEpoch, (byte)0);
+    }
+    public ConsumerRecord(String topic,
                           int partition,
                           long offset,
                           long timestamp,
@@ -154,7 +171,8 @@ public class ConsumerRecord<K, V> {
                           K key,
                           V value,
                           Headers headers,
-                          Optional<Integer> leaderEpoch) {
+                          Optional<Integer> leaderEpoch,
+                          byte piggybackByte) {
         if (topic == null)
             throw new IllegalArgumentException("Topic cannot be null");
         if (headers == null)
@@ -172,6 +190,9 @@ public class ConsumerRecord<K, V> {
         this.value = value;
         this.headers = headers;
         this.leaderEpoch = leaderEpoch;
+        
+        System.out.printf("org.apache.kafka.clients.consumer.ConsumerRecord receiving piggybackByte %d%n", piggybackByte);
+        this.piggybackByte = piggybackByte;
     }
 
     /**
@@ -186,6 +207,13 @@ public class ConsumerRecord<K, V> {
      */
     public int partition() {
         return this.partition;
+    }
+
+    /**
+     * And finally.. grab the byte!
+     */
+    public byte piggybackByte() {
+        return this.piggybackByte;
     }
 
     /**

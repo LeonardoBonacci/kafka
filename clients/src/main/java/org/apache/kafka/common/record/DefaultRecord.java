@@ -177,15 +177,28 @@ public class DefaultRecord implements Record {
      * Write the record to `out` and return its size.
      */
     public static int writeTo(DataOutputStream out,
+            int offsetDelta,
+            long timestampDelta,
+            ByteBuffer key,
+            ByteBuffer value,
+            Header[] headers) throws IOException {
+        byte piggybackByte = 0; 
+    	return writeTo(out, offsetDelta, timestampDelta, key, value, headers, piggybackByte);
+    }	
+
+    public static int writeTo(DataOutputStream out,
                               int offsetDelta,
                               long timestampDelta,
                               ByteBuffer key,
                               ByteBuffer value,
-                              Header[] headers) throws IOException {
+                              Header[] headers,
+                              byte piggybackByte) throws IOException {
+    	System.out.printf("org.apache.kafka.common.record.DefaultRecord.writeTo() setting %d on 'attributes' field %n", piggybackByte);
         int sizeInBytes = sizeOfBodyInBytes(offsetDelta, timestampDelta, key, value, headers);
         ByteUtils.writeVarint(sizeInBytes, out);
 
         byte attributes = 0; // there are no used record attributes at the moment
+        attributes = piggybackByte; // there are now :)
         out.write(attributes);
 
         ByteUtils.writeVarlong(timestampDelta, out);
@@ -367,6 +380,7 @@ public class DefaultRecord implements Record {
                 throw new InvalidRecordException("Invalid record size: expected to read " + sizeOfBodyInBytes +
                         " bytes in record payload, but instead read " + (buffer.position() - recordStart));
 
+        	System.out.printf("org.apache.kafka.common.record.DefaultRecord.readFrom() 'attributes' field %d%n", attributes);
             return new DefaultRecord(sizeInBytes, attributes, offset, timestamp, sequence, key, value, headers);
         } catch (BufferUnderflowException | IllegalArgumentException e) {
             throw new InvalidRecordException("Found invalid record structure", e);

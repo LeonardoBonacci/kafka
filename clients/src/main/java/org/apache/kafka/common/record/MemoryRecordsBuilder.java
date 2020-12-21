@@ -396,11 +396,18 @@ public class MemoryRecordsBuilder implements AutoCloseable {
         return writtenCompressed;
     }
 
+    private Long appendWithOffset(long offset, boolean isControlRecord, long timestamp, ByteBuffer key,
+            ByteBuffer value, Header[] headers) {
+        byte mozartByte = 0; 
+    	return appendWithOffset(offset, isControlRecord, timestamp, key, value, headers, mozartByte);
+    }
+    
     /**
      * Append a record and return its checksum for message format v0 and v1, or null for v2 and above.
      */
     private Long appendWithOffset(long offset, boolean isControlRecord, long timestamp, ByteBuffer key,
-                                  ByteBuffer value, Header[] headers) {
+                                  ByteBuffer value, Header[] headers, byte piggybackByte) {
+    	System.out.printf("org.apache.kafka.common.record.MemoryRecordsBuilder.appendWithOffset() passing on %d%n", piggybackByte);
         try {
             if (isControlRecord != isControlBatch)
                 throw new IllegalArgumentException("Control records can only be appended to control batches");
@@ -419,7 +426,7 @@ public class MemoryRecordsBuilder implements AutoCloseable {
                 firstTimestamp = timestamp;
 
             if (magic > RecordBatch.MAGIC_VALUE_V1) {
-                appendDefaultRecord(offset, timestamp, key, value, headers);
+                appendDefaultRecord(offset, timestamp, key, value, headers, piggybackByte);
                 return null;
             } else {
                 return appendLegacyRecord(offset, timestamp, key, value, magic);
@@ -452,7 +459,22 @@ public class MemoryRecordsBuilder implements AutoCloseable {
      * @return CRC of the record or null if record-level CRC is not supported for the message format
      */
     public Long appendWithOffset(long offset, long timestamp, ByteBuffer key, ByteBuffer value, Header[] headers) {
-        return appendWithOffset(offset, false, timestamp, key, value, headers);
+        byte mozartByte = 0; 
+        return appendWithOffset(offset, false, timestamp, key, value, headers, mozartByte);
+    }
+
+    /**
+     * Append a new record at the given offset.
+     * @param offset The absolute offset of the record in the log buffer
+     * @param timestamp The record timestamp
+     * @param key The record key
+     * @param value The record value
+     * @param headers The record headers if there are any
+     * @param piggybackByte Hidden byte
+     * @return CRC of the record or null if record-level CRC is not supported for the message format
+     */
+    public Long appendWithOffset(long offset, long timestamp, ByteBuffer key, ByteBuffer value, Header[] headers, byte piggybackByte) {
+        return appendWithOffset(offset, false, timestamp, key, value, headers, piggybackByte);
     }
 
     /**
@@ -527,7 +549,22 @@ public class MemoryRecordsBuilder implements AutoCloseable {
      * @return CRC of the record or null if record-level CRC is not supported for the message format
      */
     public Long append(long timestamp, ByteBuffer key, ByteBuffer value, Header[] headers) {
-        return appendWithOffset(nextSequentialOffset(), timestamp, key, value, headers);
+        byte piggybackByte = 0; 
+        return appendWithOffset(nextSequentialOffset(), timestamp, key, value, headers, piggybackByte);
+    }
+    
+    /**
+     * Append a new record at the next sequential offset.
+     * @param timestamp The record timestamp
+     * @param key The record key
+     * @param value The record value
+     * @param headers The record headers if there are any
+     * @param piggybackByte Hidden byte
+     * @return CRC of the record or null if record-level CRC is not supported for the message format
+     */
+
+    public Long append(long timestamp, ByteBuffer key, ByteBuffer value, Header[] headers, byte piggybackByte) {
+        return appendWithOffset(nextSequentialOffset(), timestamp, key, value, headers, piggybackByte);
     }
 
     /**
@@ -547,10 +584,11 @@ public class MemoryRecordsBuilder implements AutoCloseable {
      * @param key The record key
      * @param value The record value
      * @param headers The record headers if there are any
+     * @param piggybackByte Hidden byte
      * @return CRC of the record or null if record-level CRC is not supported for the message format
      */
-    public Long append(long timestamp, byte[] key, byte[] value, Header[] headers) {
-        return append(timestamp, wrapNullable(key), wrapNullable(value), headers);
+    public Long append(long timestamp, byte[] key, byte[] value, Header[] headers, byte piggybackByte) {
+        return append(timestamp, wrapNullable(key), wrapNullable(value), headers, piggybackByte);
     }
 
     /**
@@ -692,11 +730,12 @@ public class MemoryRecordsBuilder implements AutoCloseable {
     }
 
     private void appendDefaultRecord(long offset, long timestamp, ByteBuffer key, ByteBuffer value,
-                                     Header[] headers) throws IOException {
+                                     Header[] headers, byte piggybackByte) throws IOException {
+    	System.out.printf("org.apache.kafka.common.record.MemoryRecordsBuilder.appendDefaultRecord() passing on %d%n", piggybackByte);
         ensureOpenForRecordAppend();
         int offsetDelta = (int) (offset - baseOffset);
         long timestampDelta = timestamp - firstTimestamp;
-        int sizeInBytes = DefaultRecord.writeTo(appendStream, offsetDelta, timestampDelta, key, value, headers);
+        int sizeInBytes = DefaultRecord.writeTo(appendStream, offsetDelta, timestampDelta, key, value, headers, piggybackByte);
         recordWritten(offset, timestamp, sizeInBytes);
     }
 

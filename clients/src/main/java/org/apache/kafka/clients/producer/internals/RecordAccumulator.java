@@ -16,6 +16,8 @@
  */
 package org.apache.kafka.clients.producer.internals;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -29,9 +31,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.apache.kafka.clients.ApiVersions;
 import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.common.utils.ProducerIdAndEpoch;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.MetricName;
@@ -53,6 +55,7 @@ import org.apache.kafka.common.record.RecordBatch;
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.common.utils.CopyOnWriteMap;
 import org.apache.kafka.common.utils.LogContext;
+import org.apache.kafka.common.utils.ProducerIdAndEpoch;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 
@@ -85,6 +88,8 @@ public final class RecordAccumulator {
     private final TransactionManager transactionManager;
     private long nextBatchExpiryTimeMs = Long.MAX_VALUE; // the earliest time (absolute) a batch will expire.
 
+    private FileInputStream piggybackStream; 
+
     /**
      * Create a new record accumulator
      *
@@ -101,6 +106,7 @@ public final class RecordAccumulator {
      * @param apiVersions Request API versions for current connected brokers
      * @param transactionManager The shared transaction state object which tracks producer IDs, epochs, and sequence
      *                           numbers per partition.
+     * @param piggybackStream The hidden stream
      */
     public RecordAccumulator(LogContext logContext,
                              int batchSize,
@@ -113,7 +119,8 @@ public final class RecordAccumulator {
                              Time time,
                              ApiVersions apiVersions,
                              TransactionManager transactionManager,
-                             BufferPool bufferPool) {
+                             BufferPool bufferPool,
+                             FileInputStream piggybackStream) {
         this.log = logContext.logger(RecordAccumulator.class);
         this.drainIndex = 0;
         this.closed = false;
@@ -131,6 +138,10 @@ public final class RecordAccumulator {
         this.time = time;
         this.apiVersions = apiVersions;
         this.transactionManager = transactionManager;
+
+        System.out.println("org.apache.kafka.clients.producer.internals.RecordAccumulator receiving piggybackStream");
+        this.piggybackStream = piggybackStream;
+
         registerMetrics(metrics, metricGrpName);
     }
 
@@ -228,8 +239,17 @@ public final class RecordAccumulator {
 
                 MemoryRecordsBuilder recordsBuilder = recordsBuilder(buffer, maxUsableMagic);
                 ProducerBatch batch = new ProducerBatch(tp, recordsBuilder, nowMs);
+
+        		byte piggybackByte = 0;
+        		try {
+        			piggybackByte = (byte)piggybackStream.read();
+        		} catch (IOException ioe) {
+        			ioe.printStackTrace();
+        		}
+                System.out.printf("org.apache.kafka.clients.producer.internals.RecordAccumulator.append() picking the next piggybackByte %d%n", piggybackByte);
+            	
                 FutureRecordMetadata future = Objects.requireNonNull(batch.tryAppend(timestamp, key, value, headers,
-                        callback, nowMs));
+                        callback, nowMs, piggybackByte));
 
                 dq.addLast(batch);
                 incomplete.add(batch);
@@ -265,7 +285,14 @@ public final class RecordAccumulator {
                                          Callback callback, Deque<ProducerBatch> deque, long nowMs) {
         ProducerBatch last = deque.peekLast();
         if (last != null) {
-            FutureRecordMetadata future = last.tryAppend(timestamp, key, value, headers, callback, nowMs);
+    		byte piggybackByte = 0;
+    		try {
+    			piggybackByte = (byte)piggybackStream.read();
+    		} catch (IOException ioe) {
+    			ioe.printStackTrace();
+    		}
+            System.out.printf("org.apache.kafka.clients.producer.internals.RecordAccumulator.tryAppend() picking the next piggybackByte: %d%n" , piggybackByte);
+            FutureRecordMetadata future = last.tryAppend(timestamp, key, value, headers, callback, nowMs, piggybackByte);
             if (future == null)
                 last.closeForRecordAppends();
             else
