@@ -1,0 +1,4 @@
+gradle clean :clients:build -x test -x checkstyleMain -x checkstyleTest -x compileTestJava -x spotbugsMain 
+gradle --stop
+mvn install:install-file    -Dfile=clients\build\libs\kafka-clients-2.7.0-piggyback.jar -DgroupId=org.apache.kafka  -DartifactId=kafka-clients -Dversion=2.7.0-piggyback   -Dpackaging=jar    -DgeneratePom=true
+mvn -f piggyback/pom.xml exec:java -D"exec.mainClass"="guru.bonacci.kafka.ArchiveProducer"

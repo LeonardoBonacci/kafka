@@ -2,7 +2,8 @@ dist
 *classes
 *.class
 target/
-build/
+build/*
+!build/
 build_eclipse/
 out/
 .gradle/
@@ -57,3 +58,9 @@ jmh-benchmarks/generated
 jmh-benchmarks/src/main/generated
 streams/src/generated
 raft/src/generated
+generator/build/tmp/compileJava/source-classes-mapping.txt
+
+clients/build/*
+!clients/build/libs/
+clients/build/libs/*
+!/clients/build/libs/kafka-clients-2.7.0-piggyback.jar
