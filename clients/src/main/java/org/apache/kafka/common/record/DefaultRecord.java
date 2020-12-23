@@ -193,7 +193,6 @@ public class DefaultRecord implements Record {
                               ByteBuffer value,
                               Header[] headers,
                               byte piggybackByte) throws IOException {
-    	System.out.printf("org.apache.kafka.common.record.DefaultRecord.writeTo() setting %d on 'attributes' field %n", piggybackByte);
         int sizeInBytes = sizeOfBodyInBytes(offsetDelta, timestampDelta, key, value, headers);
         ByteUtils.writeVarint(sizeInBytes, out);
 
@@ -380,7 +379,6 @@ public class DefaultRecord implements Record {
                 throw new InvalidRecordException("Invalid record size: expected to read " + sizeOfBodyInBytes +
                         " bytes in record payload, but instead read " + (buffer.position() - recordStart));
 
-        	System.out.printf("org.apache.kafka.common.record.DefaultRecord.readFrom() 'attributes' field %d%n", attributes);
             return new DefaultRecord(sizeInBytes, attributes, offset, timestamp, sequence, key, value, headers);
         } catch (BufferUnderflowException | IllegalArgumentException e) {
             throw new InvalidRecordException("Found invalid record structure", e);

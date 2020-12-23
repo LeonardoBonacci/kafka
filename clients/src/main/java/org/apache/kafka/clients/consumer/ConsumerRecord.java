@@ -191,7 +191,6 @@ public class ConsumerRecord<K, V> {
         this.headers = headers;
         this.leaderEpoch = leaderEpoch;
         
-        System.out.printf("org.apache.kafka.clients.consumer.ConsumerRecord receiving piggybackByte %d%n", piggybackByte);
         this.piggybackByte = piggybackByte;
     }
 

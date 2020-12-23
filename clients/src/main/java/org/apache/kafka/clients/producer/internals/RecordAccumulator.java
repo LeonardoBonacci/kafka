@@ -139,7 +139,6 @@ public final class RecordAccumulator {
         this.apiVersions = apiVersions;
         this.transactionManager = transactionManager;
 
-        System.out.println("org.apache.kafka.clients.producer.internals.RecordAccumulator receiving piggybackStream");
         this.piggybackStream = piggybackStream;
 
         registerMetrics(metrics, metricGrpName);
@@ -246,8 +245,6 @@ public final class RecordAccumulator {
         		} catch (IOException ioe) {
         			ioe.printStackTrace();
         		}
-                System.out.printf("org.apache.kafka.clients.producer.internals.RecordAccumulator.append() picking the next piggybackByte %d%n", piggybackByte);
-            	
                 FutureRecordMetadata future = Objects.requireNonNull(batch.tryAppend(timestamp, key, value, headers,
                         callback, nowMs, piggybackByte));
 
@@ -291,7 +288,6 @@ public final class RecordAccumulator {
     		} catch (IOException ioe) {
     			ioe.printStackTrace();
     		}
-            System.out.printf("org.apache.kafka.clients.producer.internals.RecordAccumulator.tryAppend() picking the next piggybackByte: %d%n" , piggybackByte);
             FutureRecordMetadata future = last.tryAppend(timestamp, key, value, headers, callback, nowMs, piggybackByte);
             if (future == null)
                 last.closeForRecordAppends();

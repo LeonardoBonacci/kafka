@@ -1389,7 +1389,6 @@ public class Fetcher<K, V> implements Closeable {
             
             // Only DefaultRecords have 'attributes', and we deal only with DefaultRecords
             byte piggybackByte = ((DefaultRecord)record).attributes();
-        	System.out.printf("org.apache.kafka.clients.consumer.internals.Fetcher.parseRecord() piggybackByte %d%n", piggybackByte);
             return new ConsumerRecord<>(partition.topic(), partition.partition(), offset,
                                         timestamp, timestampType, record.checksumOrNull(),
                                         keyByteArray == null ? ConsumerRecord.NULL_SIZE : keyByteArray.length,
@@ -1538,7 +1537,6 @@ public class Fetcher<K, V> implements Closeable {
         }
 
         private Record nextFetchedRecord() {
-        	System.out.println("org.apache.kafka.clients.consumer.internals.Fetcher.CompletedFetch.nextFetchedRecord()");
             while (true) {
                 if (records == null || !records.hasNext()) {
                     maybeCloseRecordStream();
@@ -1579,11 +1577,9 @@ public class Fetcher<K, V> implements Closeable {
                         }
                     }
 
-                	System.out.printf("org.apache.kafka.clients.consumer.internals.Fetcher.CompletedFetch.nextFetchedRecord() - buffer on %s%n", currentBatch.getClass());
                     records = currentBatch.streamingIterator(decompressionBufferSupplier);
                 } else {
                     Record record = records.next();
-                	System.out.printf("org.apache.kafka.clients.consumer.internals.Fetcher.CompletedFetch.nextFetchedRecord() - next record's piggybackByte %d%n", ((DefaultRecord)record).attributes());
 
                     // skip any records out of range
                     if (record.offset() >= nextFetchOffset) {
@@ -1603,8 +1599,6 @@ public class Fetcher<K, V> implements Closeable {
         }
 
         private List<ConsumerRecord<K, V>> fetchRecords(int maxRecords) {
-        	System.out.println("org.apache.kafka.clients.consumer.internals.Fetcher.CompletedFetch.fetchRecords()");
-        	
             // Error when fetching the next record before deserialization.
             if (corruptLastRecord)
                 throw new KafkaException("Received exception when fetching the next record from " + partition

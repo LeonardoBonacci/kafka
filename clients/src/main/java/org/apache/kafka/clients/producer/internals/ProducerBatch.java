@@ -105,8 +105,6 @@ public final class ProducerBatch {
         if (!recordsBuilder.hasRoomFor(timestamp, key, value, headers)) {
             return null;
         } else {
-            System.out.printf("org.apache.kafka.clients.producer.internals.ProducerBatch.tryAppend() passing on piggybackByte %d%n", piggybackByte);
-
             Long checksum = this.recordsBuilder.append(timestamp, key, value, headers, piggybackByte);
             this.maxRecordSize = Math.max(this.maxRecordSize, AbstractRecords.estimateSizeInBytesUpperBound(magic(),
                     recordsBuilder.compressionType(), key, value, headers));

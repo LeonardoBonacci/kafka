@@ -407,7 +407,6 @@ public class MemoryRecordsBuilder implements AutoCloseable {
      */
     private Long appendWithOffset(long offset, boolean isControlRecord, long timestamp, ByteBuffer key,
                                   ByteBuffer value, Header[] headers, byte piggybackByte) {
-    	System.out.printf("org.apache.kafka.common.record.MemoryRecordsBuilder.appendWithOffset() passing on %d%n", piggybackByte);
         try {
             if (isControlRecord != isControlBatch)
                 throw new IllegalArgumentException("Control records can only be appended to control batches");
@@ -731,7 +730,6 @@ public class MemoryRecordsBuilder implements AutoCloseable {
 
     private void appendDefaultRecord(long offset, long timestamp, ByteBuffer key, ByteBuffer value,
                                      Header[] headers, byte piggybackByte) throws IOException {
-    	System.out.printf("org.apache.kafka.common.record.MemoryRecordsBuilder.appendDefaultRecord() passing on %d%n", piggybackByte);
         ensureOpenForRecordAppend();
         int offsetDelta = (int) (offset - baseOffset);
         long timestampDelta = timestamp - firstTimestamp;
