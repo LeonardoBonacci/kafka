@@ -14,32 +14,41 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 
 public class ArchiveProducer {
 
-	static String TOPIC_NAME = "audio-example2";
-	private static String FILE_NAME = "dummy.wav";
-			
-	public static void main(final String[] args) throws IOException {
+	private Producer<String, String> producer;
+	private Long numMessages;
+	
+	public static void main(final String... args) throws IOException {
+		new ArchiveProducer("dostojevski.txt").send("file-example");
+//		new ArchiveProducer("dummy.wav").send("audio-example");
+	}
+
+	public ArchiveProducer(String filename) throws IOException {
+		File file = new File(Thread.currentThread().getContextClassLoader().getResource(filename).getFile());
+		FileInputStream inputStream = new FileInputStream(file);
+		
+		producer = new KafkaProducer<String, String>(configure(), inputStream); // PASS THE FILE TO THE PRODUCER
+		// add one to demonstrate that the producer does not break after the entire inputstream has been sent to the broker.
+		numMessages = (long)Thread.currentThread().getContextClassLoader().getResourceAsStream(filename).readAllBytes().length + 1;
+	}
+
+	private Properties configure() {
 		final Properties props = new Properties();
 		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 		props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
 		props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+		return props;
+	}
 
-		ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-		File file = new File(classLoader.getResource(FILE_NAME).getFile());
-		FileInputStream dostojevski = new FileInputStream(file);
-		
-		Producer<String, String> producer = new KafkaProducer<String, String>(props, dostojevski); // PASS THE FILE TO THE PRODUCER
-
-		// add one to demonstrate that the producer does not break after the entire inputstream has been sent to the broker.
-		Long numMessages = (long)classLoader.getResourceAsStream(FILE_NAME).readAllBytes().length + 1;
+	void send(String topic) {
 		System.out.printf("about to start sending %d messages %n", numMessages);
 
 		// Produce sample data
 		for (Long i = 0L; i < numMessages; i++) {
-			String key = "foo" + i;
-			String value = "bar" + i;
+			String key = "foo " + i;
+			String value = "bar " + i;
 			
 			System.out.printf("Producing record: %s\t%s%n", key, value);
-			producer.send(new ProducerRecord<String, String>(TOPIC_NAME, key, value), new Callback() {
+			producer.send(new ProducerRecord<String, String>(topic, key, value), new Callback() {
 				@Override
 				public void onCompletion(RecordMetadata m, Exception e) {
 					if (e != null) {
@@ -53,10 +62,7 @@ public class ArchiveProducer {
 		}
 
 		producer.flush();
-
-		System.out.printf("%d messages were produced to topic %s%n", numMessages, TOPIC_NAME);
-
-		dostojevski.close();
+		System.out.printf("%d messages were produced to topic %s%n", numMessages, topic);
 		producer.close();
 	}
 }

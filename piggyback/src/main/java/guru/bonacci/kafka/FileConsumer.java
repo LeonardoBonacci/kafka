@@ -1,6 +1,7 @@
 package guru.bonacci.kafka;
 
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.Arrays;
@@ -15,10 +16,20 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 
 public class FileConsumer {
 
-	static String TOPIC_NAME = "file-example";
+	private Consumer<String, String> consumer;
+	private String fileNameIn, filePathOut;
+	
+	public static void main(final String... args) throws IOException {
+		new FileConsumer("dostojevski.txt", "src/main/resources/dostojevski-copy.txt").receive("file-example");
+	}
 
-	public static void main(final String[] args) throws Exception {
+	public FileConsumer(String fileNameIn, String filePathOut) {
+		this.fileNameIn = fileNameIn; 
+		this.filePathOut = filePathOut;
+		consumer = new KafkaConsumer<>(configure());
+	}
 
+	private Properties configure() {
 		final Properties props = new Properties();
 		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
@@ -27,12 +38,14 @@ public class FileConsumer {
 				"org.apache.kafka.common.serialization.StringDeserializer");
 		props.put(ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID().toString());
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		return props;
+	}
 
-		final Consumer<String, String> consumer = new KafkaConsumer<String, String>(props);
-		consumer.subscribe(Arrays.asList(TOPIC_NAME));
+	void receive(String topic) throws IOException {
+		consumer.subscribe(Arrays.asList(topic));
 
 		ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-		int bytesInOutputfile = classLoader.getResourceAsStream("dostojevski.txt").readAllBytes().length;
+		int bytesInOutputfile = classLoader.getResourceAsStream(fileNameIn).readAllBytes().length;
 
 		System.out.printf("%d bytes in file %n", bytesInOutputfile);
 		ByteBuffer buffer = ByteBuffer.allocate(bytesInOutputfile);
@@ -53,7 +66,7 @@ public class FileConsumer {
 				if (escape) break;
 			}
 		} finally {
-			FileOutputStream fos = new FileOutputStream("src/main/resources/dostojevski-copy.txt");
+			FileOutputStream fos = new FileOutputStream(filePathOut);
 			fos.write(buffer.array());
 
 			System.out.println("Over and out");
